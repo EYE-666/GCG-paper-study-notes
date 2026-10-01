@@ -28,41 +28,7 @@
 
 不过，肯定式前缀只是一个代理目标。命中前缀并不必然意味着模型最终生成了完整的有害内容，因此评估时还需要检查真实输出。
 
-## 3. 损失函数：为什么使用负对数似然
-
-大语言模型接收 token 序列，并根据已有 token 预测下一个 token 的概率分布。设攻击输入为：
-
-```text
-x = (x₁, x₂, ..., xₙ)
-```
-
-攻击者希望模型继续输出目标 token 序列：
-
-```text
-y = (y₁, y₂, ..., yₕ)
-```
-
-因为模型是自回归生成的，整个目标序列的条件概率可以分解为：
-
-$$
-P(y\mid x)=\prod_{j=1}^{H}P(y_j\mid x,y_{<j})
-$$
-
-从目标上说，直接最大化 $P(y\mid x)$ 是可以的。论文实际最小化与它等价的负对数似然：
-
-$$
-\mathcal{L}(x,y)=-\log P(y\mid x)
-=-\sum_{j=1}^{H}\log P(y_j\mid x,y_{<j})
-$$
-
-不直接计算概率乘积主要有两个原因：
-
-1. 多个小概率连续相乘会迅速接近零，容易出现数值下溢，梯度也更难稳定计算。
-2. 对数把乘积变成逐 token 损失之和，可以直接使用常见的交叉熵形式，便于反向传播和比较候选后缀。
-
-由于 $-\log(\cdot)$ 是单调变换，最小化负对数似然和最大化目标序列概率具有相同的最优方向。变化的是数值形式，不是优化目标的含义。
-
-## 4. 离散 token 为什么还能计算梯度
+## 3. 离散 token 为什么还能计算梯度
 
 每个 suffix 位置可以表示成一个长度为词表大小的 one-hot 向量。当前 token 对应的元素为 1，其他元素为 0。模型可以对这个 one-hot 表示计算梯度。
 
@@ -70,7 +36,7 @@ $$
 
 梯度只提供局部的一阶近似。token 替换后，模型的真实损失不一定完全符合梯度排序，所以 GCG 还要对候选后缀进行真实的前向计算，再从中选择损失最低的候选。
 
-## 5. Algorithm 1：Greedy Coordinate Gradient
+## 4. Algorithm 1：Greedy Coordinate Gradient
 
 Algorithm 1 优化单个请求上的对抗后缀。一次迭代可以理解为以下过程：
 
@@ -88,13 +54,13 @@ AutoPrompt 也使用梯度引导离散 token 搜索。论文强调的关键区�
 
 我的理解是，GCG 为“修改哪个位置”和“替换成哪个 token”都保留了更大的搜索范围，但代价是需要更多候选生成和前向计算。
 
-## 6. 从单请求扩展到通用攻击
+## 5. 从单请求扩展到通用攻击
 
 通用攻击希望同一段 suffix 能作用于多个危险请求。每个请求拥有与自身内容对应的肯定式目标前缀，但所有请求共享同一个可优化 suffix。
 
 Algorithm 2 在 Algorithm 1 的基础上聚合多个请求的梯度和真实损失。论文还采用逐步增加请求的方式：先让 suffix 在较少请求上成功，再逐渐加入新的请求。相比从第一步就同时优化全部请求，这种方式更稳定。
 
-## 7. Algorithm 2 与多模型 tokenizer
+## 6. Algorithm 2 与多模型 tokenizer
 
 如果多个模型使用相同 tokenizer，那么：
 
@@ -106,7 +72,7 @@ Algorithm 2 在 Algorithm 1 的基础上聚合多个请求的梯度和真实损�
 
 如果模型使用不同 tokenizer，同一段文本可能被切分成不同数量的 token，对应的 token ID 和词表维度也不一致。因此，原始 Algorithm 2 不能直接把这些模型的坐标梯度相加。论文直接联合优化的是共享 tokenizer 的模型，再把得到的文本后缀拿到其他 tokenizer 或黑盒模型上测试迁移性。
 
-## 8. 实验设计与主要结论
+## 7. 实验设计与主要结论
 
 论文构建了 AdvBench，并从两个角度评估攻击：
 
@@ -117,7 +83,7 @@ Algorithm 2 在 Algorithm 1 的基础上聚合多个请求的梯度和真实损�
 
 我认为论文最重要的结论不是某个单独的成功率，而是三个现象：经过行为对齐的模型仍可能缺乏对抗鲁棒性；一个后缀能够跨多个请求工作；在源模型上优化的后缀有时能够迁移到结构和 tokenizer 不同的模型。
 
-## 9. 方法的局限
+## 8. 方法的局限
 
 ### 计算开销较高
 
@@ -157,9 +123,4 @@ Algorithm 2 在 Algorithm 1 的基础上聚合多个请求的梯度和真实损�
 
 “实验说明这种后缀具有通用性和一定迁移性，但成功并不意味着方法没有限制。它仍需要大量计算，联合优化依赖共享 tokenizer，而且肯定式前缀只是间接指标。”
 
-## 参考资料
-
-- Zou et al., *Universal and Transferable Adversarial Attacks on Aligned Language Models*: <https://arxiv.org/abs/2307.15043>
-- 论文官方代码：<https://github.com/llm-attacks/llm-attacks>
-- Shin et al., *AutoPrompt: Eliciting Knowledge from Language Models with Automatically Generated Prompts*: <https://arxiv.org/abs/2010.15980>
 
