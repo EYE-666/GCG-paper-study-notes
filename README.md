@@ -2,6 +2,10 @@
 
 本仓库保存我对论文 *Universal and Transferable Adversarial Attacks on Aligned Language Models* 的学习材料，包括原始汇报 PPT 和结合汇报内容整理的学习总结。
 
+## 关联仓库
+
+- [Vicuna-7B GCG Algorithm 1 复现实验](https://github.com/EYE-666/vicuna-gcg-algorithm1-reproduction)：包含单模型、单行为的运行配置、实验日志和结果。
+
 ## 论文与代码
 
 - 论文标题：*Universal and Transferable Adversarial Attacks on Aligned Language Models*
@@ -28,4 +32,3 @@
 ## 使用说明
 
 这些材料用于论文学习、课堂汇报和经过授权的模型安全研究。仓库不包含模型权重、攻击运行环境或面向真实系统的攻击服务。
-
